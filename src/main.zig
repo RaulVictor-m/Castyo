@@ -67,7 +67,7 @@ fn IntReturnType(comptime srcInfo: builtin.Type,
     const NewIntT = @Type(.{.Int = .{.signedness = destSign, .bits = destBits}});
 
     if(srcInfo == .Vector) {
-        return @Vector(srcInfo.len, NewIntT);
+        return @Vector(srcInfo.Vector.len, NewIntT);
     }
     return NewIntT;
 }
@@ -242,4 +242,41 @@ test "U32(): int test" {
     nr +%= U32(n8);
 
     try std.testing.expect(nr == 0);
+}
+
+test "U32/I32(): Vector(int) test" {
+    var nru : @Vector(3, u32) = @splat(0);
+    var nri : @Vector(3, i32) = @splat(0);
+
+    const n1 : @Vector(3, i64)= @splat(-1);
+    const n2 : @Vector(3, u64)= @splat(1);
+
+    const n3 : @Vector(3, i32)= @splat(-1);
+    const n4 : @Vector(3, u32)= @splat(1);
+
+    const n5 : @Vector(3, u36)= @splat(1);
+    const n6 : @Vector(3, u30)= @splat(1);
+
+    const n7 : @Vector(3, i36)= @splat(-1);
+    const n8 : @Vector(3, i30)= @splat(-1);
+
+    nru +%= U32(n1);
+    nri +%= I32(n1);
+    nru +%= U32(n2);
+    nri +%= I32(n2);
+    nru +%= U32(n3);
+    nri +%= I32(n3);
+    nru +%= U32(n4);
+    nri +%= I32(n4);
+    nru +%= U32(n5);
+    nri +%= I32(n5);
+    nru +%= U32(n6);
+    nri +%= I32(n6);
+    nru +%= U32(n7);
+    nri +%= I32(n7);
+    nru +%= U32(n8);
+    nri +%= I32(n8);
+
+    try std.testing.expect(@reduce(.Add, nri) == 0);
+    try std.testing.expect(@reduce(.Add, nru) == 0);
 }
