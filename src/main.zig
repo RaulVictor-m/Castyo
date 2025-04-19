@@ -1,98 +1,106 @@
 const std = @import("std");
 
-/// sign extand small signed its and trucate bigger ints
-fn U32(v: anytype) u32 {
-    const T = @TypeOf(v);
-    const tInfo = @typeInfo(T);
-    const tName = @typeName(T);
-    if(T == u32 or T == comptime_int) return @as(u32, v);
+fn I64(v: anytype) i64 {
+    return I(64, v);
+}
 
-    if(tInfo == .Int) {
-        const tInt = tInfo.Int;
-        if(tInt.bits < 32)  return @as(u32, @bitCast(@as(i32, @intCast(v))));//i|u16
-        if(tInt.bits == 32) return @as(u32, @bitCast(v));                    //i32
+fn I32(v: anytype) i32 {
+    return I(32, v);
+}
 
-        switch(tInt.signedness) {
-            .signed   => return @as(u32, @bitCast(@as(i32, @truncate(v)))), //>i32
-            .unsigned => return @as(u32, @truncate(v)),                     //>u32
-        }
+fn I16(v: anytype) i16 {
+    return I(16, v);
+}
 
-    } else @compileError("U32(): Cannot cast from " ++ tName ++ " to u32\n");
-
-    return v;
+fn I8(v: anytype) i8 {
+    return I(8, v);
 }
 
 /// sign extand small signed its and trucate bigger ints
 fn U64(v: anytype) u64 {
-    const T = @TypeOf(v);
-    const tInfo = @typeInfo(T);
-    const tName = @typeName(T);
-    if(T == u64 or T == comptime_int) return @as(u64, v);
-
-    if(tInfo == .Int) {
-        const tInt = tInfo.Int;
-        if(tInt.bits < 64)  return @as(u64, @bitCast(@as(i64, @intCast(v))));//i|u16
-        if(tInt.bits == 64) return @as(u64, @bitCast(v));                    //i64
-
-        switch(tInt.signedness) {
-            .signed   => return @as(u64, @bitCast(@as(i64, @truncate(v)))), //>i64
-            .unsigned => return @as(u64, @truncate(v)),                     //>u64
-        }
-
-    } else @compileError("U64(): Cannot cast from " ++ tName ++ " to u64\n");
-
-    return v;
+   return U(64, v);
 }
 
-// fn I(n : comptime_int, v: anytype) {
-//     const DestT = @Type(std
-
-//     const T = @TypeOf(v);
-//     const tInfo = @typeInfo(T);
-//     const tName = @typeName(T);
-//     if(T == i64 or T == comptime_int) return @as(i64, v);
-// }
-
-fn I64(v: anytype) i64 {
-    const T = @TypeOf(v);
-    const tInfo = @typeInfo(T);
-    const tName = @typeName(T);
-    if(T == i64 or T == comptime_int) return @as(i64, v);
-
-    if(tInfo == .Int) {
-        const tInt = tInfo.Int;
-        if(tInt.bits < 64)  return @as(i64, v);                             //i|u16
-        if(tInt.bits == 64) return @as(i64, @bitCast(v));                   //u64
-
-        switch(tInt.signedness) {
-            .signed   => return @as(i64, @intCast(v)),                      //>i64
-            .unsigned => return @as(i64, @bitCast(@as(u64, @truncate(v)))), //>u64
-        }
-
-    }else @compileError("I64(): Cannot cast from " ++ tName ++ " to i64\n");
-
-    return v;
+/// sign extand small signed its and trucate bigger ints
+fn U32(v: anytype) u32 {
+    return U(32, v);
 }
 
-fn I32(v: anytype) i32 {
+/// sign extand small signed its and trucate bigger ints
+fn U16(v: anytype) u16 {
+    return U(16, v);
+}
+
+/// sign extand small signed its and trucate bigger ints
+fn U8(v: anytype) u8 {
+    return U(8, v);
+}
+
+
+fn U(n : comptime_int, v: anytype) ReturnType: {
+        const T = @TypeOf(v);
+        const tInfo = @typeInfo(T);
+
+        const NewIntT = @Type(.{.Int = .{.signedness = .unsigned, .bits = n}});
+
+        if(tInfo == .Vector) {
+            break : ReturnType @Vector(tInfo.len, NewIntT);
+        }
+        break : ReturnType NewIntT;
+    } {
+
+    const DestT =  @Type(.{.Int = .{.signedness = .unsigned, .bits = n}});
+    const DestTi = @Type(.{.Int = .{.signedness = .signed, .bits = n}});
+
     const T = @TypeOf(v);
     const tInfo = @typeInfo(T);
     const tName = @typeName(T);
-    if(T == i32 or T == comptime_int) return @as(i32, v);
+
+    if(T == DestT or T == comptime_int) return @as(DestT, v);
 
     if(tInfo == .Int) {
         const tInt = tInfo.Int;
-        if(tInt.bits < 32)  return @as(i32, v);                             //i|u16
-        if(tInt.bits == 32) return @as(i32, @bitCast(v));                   //u32
+        if(tInt.bits < n)  return @as(DestT, @bitCast(@as(DestTi, @intCast(v))));//i|u16
+        if(tInt.bits == n) return @as(DestT, @bitCast(v));                       //i64
 
         switch(tInt.signedness) {
-            .signed   => return @as(i32, @intCast(v)),                      //i64
-            .unsigned => return @as(i32, @bitCast(@as(u32, @truncate(v)))), //u64
+            .signed   => return @as(DestT, @bitCast(@as(DestTi, @truncate(v)))), //>i64
+            .unsigned => return @as(DestT, @truncate(v)),                        //>u64
         }
 
-    }else @compileError("I32(): Cannot cast from " ++ tName ++ " to i32\n");
+    }
 
-    return v;
+    const errMsg =
+    std.fmt.comptimePrint("U{d}(): Cannot cast from {s} to u{d}\n", .{n, tName, n});
+    @compileError(errMsg);
+}
+
+fn I(n : comptime_int, v: anytype)
+    @Type(.{.Int = .{.signedness = .signed, .bits = n}}) {
+
+    const DestT =  @Type(.{.Int = .{.signedness = .signed, .bits = n}});
+    const DestTu = @Type(.{.Int = .{.signedness = .unsigned, .bits = n}});
+
+    const T = @TypeOf(v);
+    const tInfo = @typeInfo(T);
+    const tName = @typeName(T);
+
+    if(T == DestT or T == comptime_int) return @as(DestT, v);
+
+    if(tInfo == .Int) {
+        const tInt = tInfo.Int;
+        if(tInt.bits < n)  return @as(DestT, v);                                 //i|u16
+        if(tInt.bits == n) return @as(DestT, @bitCast(v));                       //u64
+
+        switch(tInt.signedness) {
+            .signed   => return @as(DestT, @intCast(v)),                         //>i64
+            .unsigned => return @as(DestT, @bitCast(@as(DestTu, @truncate(v)))), //>u64
+        }
+
+    }
+    const errMsg =
+    std.fmt.comptimePrint("I{d}(): Cannot cast from {s} to i{d}\n", .{n, tName, n});
+    @compileError(errMsg);
 }
 
 pub fn main() !void {
