@@ -280,3 +280,15 @@ test "U32/I32(): Vector(int) test" {
     try std.testing.expect(@reduce(.Add, nri) == 0);
     try std.testing.expect(@reduce(.Add, nru) == 0);
 }
+
+test "README examples" {
+
+    var result: i64 = 10;
+
+    const n1: u64 = 10;
+    const n2: i128 = -20;
+
+    result += I64(n1) + I64(n2);
+
+    try std.testing.expect(result == 0);
+}
