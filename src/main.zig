@@ -1,42 +1,48 @@
 const std = @import("std");
 const builtin = std.builtin;
 
-fn I64(v: anytype) i64 {
+fn I64(v: anytype) IntReturnType(64, @typeInfo(@TypeOf(v)), .signed) {
     return I(64, v);
 }
 
-fn I32(v: anytype) i32 {
+fn I32(v: anytype) IntReturnType(32, @typeInfo(@TypeOf(v)), .signed) {
     return I(32, v);
 }
 
-fn I16(v: anytype) i16 {
+fn I16(v: anytype) IntReturnType(16, @typeInfo(@TypeOf(v)), .signed) {
     return I(16, v);
 }
 
-fn I8(v: anytype) i8 {
+fn I8(v: anytype) IntReturnType(8, @typeInfo(@TypeOf(v)), .signed) {
     return I(8, v);
 }
 
-/// sign extand small signed its and trucate bigger ints
-fn U64(v: anytype) u64 {
+fn U64(v: anytype) IntReturnType(64, @typeInfo(@TypeOf(v)), .unsigned) {
    return U(64, v);
 }
 
-/// sign extand small signed its and trucate bigger ints
-fn U32(v: anytype) u32 {
+fn U32(v: anytype) IntReturnType(32, @typeInfo(@TypeOf(v)), .unsigned) {
     return U(32, v);
 }
 
-/// sign extand small signed its and trucate bigger ints
-fn U16(v: anytype) u16 {
+fn U16(v: anytype) IntReturnType(16, @typeInfo(@TypeOf(v)), .unsigned) {
     return U(16, v);
 }
 
-/// sign extand small signed its and trucate bigger ints
-fn U8(v: anytype) u8 {
+fn U8(v: anytype) IntReturnType(8, @typeInfo(@TypeOf(v)), .unsigned) {
     return U(8, v);
 }
 
+fn internalTypeInfo(T: type) builtin.Type {
+    const tInfo = @typeInfo(T);
+    switch(tInfo) {
+        .Vector => return @typeInfo(tInfo.Vector.child),
+        .Int, .Float, .Bool => return tInfo,
+
+        else => @compileError("Unsuported Type " ++ @typeName(T)),
+    }
+    return tInfo;
+}
 fn IntReturnType(bits: comptime_int, tInfo: builtin.Type, sign: builtin.Signedness) type {
     const NewIntT = @Type(.{.Int = .{.signedness = sign, .bits = bits}});
 
@@ -49,41 +55,32 @@ fn IntReturnType(bits: comptime_int, tInfo: builtin.Type, sign: builtin.Signedne
 fn U(bits : comptime_int, v: anytype)
         IntReturnType(bits, @typeInfo(@TypeOf(v)), .unsigned)
     {
-
     const DestT = IntReturnType(bits, @typeInfo(@TypeOf(v)), .unsigned);
     const DestTi = IntReturnType(bits, @typeInfo(@TypeOf(v)), .signed);
 
     const T = @TypeOf(v);
-    const tInfo = @typeInfo(T);
     const tName = @typeName(T);
 
     if(T == DestT or T == comptime_int) return @as(DestT, v);
 
-    const internalInt: ?builtin.Type.Int = internalIntResult: {
-        if(tInfo == .Int) {
-            break: internalIntResult tInfo.Int;
-        }
-        if(tInfo == .Vector) {
-            break: internalIntResult @typeInfo(tInfo.Vector.child);
-        }
+    const internalT = internalTypeInfo(T);
+    switch (internalT){
+        .Int => |tInt| {
+            if(tInt.bits < bits)  return @as(DestT, @bitCast(@as(DestTi, @intCast(v))));//i|u16
+            if(tInt.bits == bits) return @as(DestT, @bitCast(v));                       //i64
 
-        break: internalIntResult null;
-    };
-
-
-    if(internalInt) |tInt| {
-        if(tInt.bits < bits)  return @as(DestT, @bitCast(@as(DestTi, @intCast(v))));//i|u16
-        if(tInt.bits == bits) return @as(DestT, @bitCast(v));                       //i64
-
-        switch(tInt.signedness) {
-            .signed   => return @as(DestT, @bitCast(@as(DestTi, @truncate(v)))), //>i64
-            .unsigned => return @as(DestT, @truncate(v)),                        //>u64
+            switch(tInt.signedness) {
+                .signed   => return @as(DestT, @bitCast(@as(DestTi, @truncate(v)))), //>i64
+                .unsigned => return @as(DestT, @truncate(v)),                        //>u64
+            }
+        },
+        else => {
+            const errMsg =
+            std.fmt.comptimePrint("U{d}(): Cannot cast from {s} to u{d}\n", .{bits, tName, bits});
+            @compileError(errMsg);
         }
     }
-
-    const errMsg =
-    std.fmt.comptimePrint("U{d}(): Cannot cast from {s} to u{d}\n", .{bits, tName, bits});
-    @compileError(errMsg);
+    return v;
 }
 
 fn I(bits : comptime_int, v: anytype)
@@ -99,18 +96,16 @@ fn I(bits : comptime_int, v: anytype)
 
     if(T == DestT or T == comptime_int) return @as(DestT, v);
 
-    const internalInt: ?builtin.Type.Int = internalIntResult: {
-        if(tInfo == .Int) {
-            break: internalIntResult tInfo.Int;
+    const internalInt: ?builtin.Type.Int = 
+        if(tInfo == .Int) tInfo.Int
+        else if(tInfo == .Vector) vecChild: {
+            const vChildInfo = @typeInfo(tInfo.Vector.child);
+            if(vChildInfo == .Int) break: vecChild vChildInfo
+            else break: vecChild null;
         }
-        if(tInfo == .Vector) {
-            break: internalIntResult @typeInfo(tInfo.Vector.child);
-        }
+        else null;
 
-        break: internalIntResult null;
-    };
-
-
+    //int or vector(n, int)
     if(internalInt) |tInt| {
         if(tInt.bits < bits)  return @as(DestT, v);                                 //i|u16
         if(tInt.bits == bits) return @as(DestT, @bitCast(v));                       //u64
