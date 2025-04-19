@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = std.builtin;
 
 fn I64(v: anytype) i64 {
     return I(64, v);
@@ -36,21 +37,21 @@ fn U8(v: anytype) u8 {
     return U(8, v);
 }
 
+fn IntReturnType(bits: comptime_int, tInfo: builtin.Type, sign: builtin.Signedness) type {
+    const NewIntT = @Type(.{.Int = .{.signedness = sign, .bits = bits}});
 
-fn U(n : comptime_int, v: anytype) ReturnType: {
-        const T = @TypeOf(v);
-        const tInfo = @typeInfo(T);
+    if(tInfo == .Vector) {
+        return @Vector(tInfo.len, NewIntT);
+    }
+    return NewIntT;
+}
 
-        const NewIntT = @Type(.{.Int = .{.signedness = .unsigned, .bits = n}});
+fn U(bits : comptime_int, v: anytype)
+        IntReturnType(bits, @typeInfo(@TypeOf(v)), .unsigned)
+    {
 
-        if(tInfo == .Vector) {
-            break : ReturnType @Vector(tInfo.len, NewIntT);
-        }
-        break : ReturnType NewIntT;
-    } {
-
-    const DestT =  @Type(.{.Int = .{.signedness = .unsigned, .bits = n}});
-    const DestTi = @Type(.{.Int = .{.signedness = .signed, .bits = n}});
+    const DestT = IntReturnType(bits, @typeInfo(@TypeOf(v)), .unsigned);
+    const DestTi = IntReturnType(bits, @typeInfo(@TypeOf(v)), .signed);
 
     const T = @TypeOf(v);
     const tInfo = @typeInfo(T);
@@ -58,28 +59,39 @@ fn U(n : comptime_int, v: anytype) ReturnType: {
 
     if(T == DestT or T == comptime_int) return @as(DestT, v);
 
-    if(tInfo == .Int) {
-        const tInt = tInfo.Int;
-        if(tInt.bits < n)  return @as(DestT, @bitCast(@as(DestTi, @intCast(v))));//i|u16
-        if(tInt.bits == n) return @as(DestT, @bitCast(v));                       //i64
+    const internalInt: ?builtin.Type.Int = internalIntResult: {
+        if(tInfo == .Int) {
+            break: internalIntResult tInfo.Int;
+        }
+        if(tInfo == .Vector) {
+            break: internalIntResult @typeInfo(tInfo.Vector.child);
+        }
+
+        break: internalIntResult null;
+    };
+
+
+    if(internalInt) |tInt| {
+        if(tInt.bits < bits)  return @as(DestT, @bitCast(@as(DestTi, @intCast(v))));//i|u16
+        if(tInt.bits == bits) return @as(DestT, @bitCast(v));                       //i64
 
         switch(tInt.signedness) {
             .signed   => return @as(DestT, @bitCast(@as(DestTi, @truncate(v)))), //>i64
             .unsigned => return @as(DestT, @truncate(v)),                        //>u64
         }
-
     }
 
     const errMsg =
-    std.fmt.comptimePrint("U{d}(): Cannot cast from {s} to u{d}\n", .{n, tName, n});
+    std.fmt.comptimePrint("U{d}(): Cannot cast from {s} to u{d}\n", .{bits, tName, bits});
     @compileError(errMsg);
 }
 
-fn I(n : comptime_int, v: anytype)
-    @Type(.{.Int = .{.signedness = .signed, .bits = n}}) {
+fn I(bits : comptime_int, v: anytype)
+        IntReturnType(bits, @typeInfo(@TypeOf(v)), .signed)
+    {
 
-    const DestT =  @Type(.{.Int = .{.signedness = .signed, .bits = n}});
-    const DestTu = @Type(.{.Int = .{.signedness = .unsigned, .bits = n}});
+    const DestT = IntReturnType(bits, @typeInfo(@TypeOf(v)), .signed);
+    const DestTu = IntReturnType(bits, @typeInfo(@TypeOf(v)), .unsigned);
 
     const T = @TypeOf(v);
     const tInfo = @typeInfo(T);
@@ -87,10 +99,21 @@ fn I(n : comptime_int, v: anytype)
 
     if(T == DestT or T == comptime_int) return @as(DestT, v);
 
-    if(tInfo == .Int) {
-        const tInt = tInfo.Int;
-        if(tInt.bits < n)  return @as(DestT, v);                                 //i|u16
-        if(tInt.bits == n) return @as(DestT, @bitCast(v));                       //u64
+    const internalInt: ?builtin.Type.Int = internalIntResult: {
+        if(tInfo == .Int) {
+            break: internalIntResult tInfo.Int;
+        }
+        if(tInfo == .Vector) {
+            break: internalIntResult @typeInfo(tInfo.Vector.child);
+        }
+
+        break: internalIntResult null;
+    };
+
+
+    if(internalInt) |tInt| {
+        if(tInt.bits < bits)  return @as(DestT, v);                                 //i|u16
+        if(tInt.bits == bits) return @as(DestT, @bitCast(v));                       //u64
 
         switch(tInt.signedness) {
             .signed   => return @as(DestT, @intCast(v)),                         //>i64
@@ -99,7 +122,7 @@ fn I(n : comptime_int, v: anytype)
 
     }
     const errMsg =
-    std.fmt.comptimePrint("I{d}(): Cannot cast from {s} to i{d}\n", .{n, tName, n});
+    std.fmt.comptimePrint("I{d}(): Cannot cast from {s} to i{d}\n", .{bits, tName, bits});
     @compileError(errMsg);
 }
 
