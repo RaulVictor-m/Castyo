@@ -1,0 +1,13 @@
+.{
+    .name = .castyo,
+    .version = "0.2.0",
+    .minimum_zig_version = "0.14.0",
+    .fingerprint = 0x9272f32289ca791d,
+    .paths = .{
+        "src",
+        "build.zig",
+        "build.zig.zon",
+        "LICENSE",
+        "README.md",
+    },
+}
