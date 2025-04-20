@@ -8,11 +8,15 @@ pub fn build(b: *std.Build) void {
 
     const optimize = b.standardOptimizeOption(.{});
 
-    const exe = b.addExecutable(.{
-        .name = "castyo",
+    const castyo_mod = b.addModule("castyo", .{
         .root_source_file = b.path("src/castyo.zig"),
         .target = target,
         .optimize = optimize,
+    });
+
+    const exe = b.addExecutable(.{
+        .name = "castyo",
+        .root_module = castyo_mod,
     });
 
     b.installArtifact(exe);
