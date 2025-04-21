@@ -34,7 +34,3 @@ on these example:
 
 As far as installation is concerned there is no secret to it, just download *src/castyo.zig*
 and use it in you project as you please.
-
-I personally don't like package managers for programming languages, and I like it
-even less when it comes to very simple things so I myself am not going to be adding
-a *build.zig.zon* to these project.
