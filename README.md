@@ -8,8 +8,8 @@ and more user friendly, which is going to help alot for prototyping.
 
 ## Situation
 
-Well the library is not ready just yet and does not support floats by any extention,
-but you are already able to do any int to int
+Well the library is not ready just yet and does not support casting to floats,
+but you are already able to do any int to int or float to int
 conversion with only one single function like "U64(n)" or "I32(n)", and
 as a bonus everything that works for integers also works for Vector(x, int).
 
