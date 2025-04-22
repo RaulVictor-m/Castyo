@@ -112,6 +112,27 @@ fn Int(bits: comptime_int, v: anytype, comptime sign: builtin.Signedness) IntRet
                 }
             }
         },
+        .float => |tFloat|{
+            //this is an int with the same amount of bits as the float which is mostly std ints
+            const TIntTmp = IntReturnType(@typeInfo(@TypeOf(v)), tFloat.bits, .signed);
+
+            if (sign == .unsigned) {
+                //OBS: 5 is the min number of bits in a float exponent
+
+                //f(origins bits) to u(bits) - where (origin bits-5) <= (bits)
+                if (tFloat.bits-5 <= bits) return @as(DestT, @bitCast(@as(DestTi, @intFromFloat(v))));
+
+                //f(origins bits) to u(bits) - where (origin bits-5) > (bits)
+                return @as(DestT, @bitCast(@as(DestTi, @truncate(@as(TIntTmp, @intFromFloat(v))))));
+            }
+            else {
+                //f(origins bits) to i(bits) - where (origin bits-5) <= (bits)
+                if (tFloat.bits-5 <= bits) return @bitCast(@as(DestTi, @intFromFloat(v)));
+
+                //f(origins bits) to i(bits) - where (origin bits-5) > (bits)
+                return @as(DestTi, @truncate(@as(TIntTmp, @intFromFloat(v))));
+            }
+        },
         else => {
             const errMsg = if (sign == .unsigned)
                 std.fmt.comptimePrint("U{d}(): Cannot cast from {s} to u{d}\n", .{ bits, tName, bits })
@@ -271,13 +292,79 @@ test "U32/I32(): Vector(int) test" {
     try std.testing.expect(@reduce(.Add, nru) == 0);
 }
 
+test "U32/I32(): float test" {
+    var nri: i32 = 0;
+    var nru: u32 = 0;
+
+    const n1: f64 = -1.5;
+    const n2: f64 = 1.5;
+
+    const n3: f32 = -1.5;
+    const n4: f32 = 1.5;
+
+    const n5: f16 = -1.5;
+    const n6: f16 = 1.5;
+
+    nru +%= U32(n1);
+    nru +%= U32(n2);
+    nru +%= U32(n3);
+    nru +%= U32(n4);
+    nru +%= U32(n5);
+    nru +%= U32(n6);
+
+    nri += I32(n1);
+    nri += I32(n2);
+    nri += I32(n3);
+    nri += I32(n4);
+    nri += I32(n5);
+    nri += I32(n6);
+
+    try std.testing.expect(nri == 0);
+    try std.testing.expect(nru == 0);
+}
+
+test "U32/I32(): Vector(float) test" {
+    var nri: @Vector(3, i32) = @splat(0);
+    var nru: @Vector(3, u32) = @splat(0);
+
+    const n1: @Vector(3, f64) = @splat(-1.5);
+    const n2: @Vector(3, f64) = @splat(1.5);
+
+    const n3: @Vector(3, f32) = @splat(-1.5);
+    const n4: @Vector(3, f32) = @splat(1.5);
+
+    const n5: @Vector(3, f16) = @splat(-1.5);
+    const n6: @Vector(3, f16) = @splat(1.5);
+
+    nru +%= U32(n1);
+    nru +%= U32(n2);
+    nru +%= U32(n3);
+    nru +%= U32(n4);
+    nru +%= U32(n5);
+    nru +%= U32(n6);
+
+    nri += I32(n1);
+    nri += I32(n2);
+    nri += I32(n3);
+    nri += I32(n4);
+    nri += I32(n5);
+    nri += I32(n6);
+
+    try std.testing.expect(@reduce(.Add, nri) == 0);
+    try std.testing.expect(@reduce(.Add, nru) == 0);
+}
+
+
 test "README examples" {
     var result: i64 = 10;
 
     const n1: u64 = 10;
     const n2: i128 = -20;
+    const n3: f64 = 10.306;
+    const n4: f64 = -10.306;
 
     result += I64(n1) + I64(n2);
+    result += I64(n3) + I64(n4);
 
     try std.testing.expect(result == 0);
 }

@@ -24,8 +24,11 @@ on these example:
 
     const n1: u64 = 10;
     const n2: i128 = -20;
+    const n3: f64 = 10.306;
+    const n4: f64 = -10.306;
 
     result += I64(n1) + I64(n2);
+    result += I64(n3) + I64(n4);
 
     try std.testing.expect(result == 0);
 ```
