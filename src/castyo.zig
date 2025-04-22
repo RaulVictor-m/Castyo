@@ -105,7 +105,7 @@ fn Int(bits: comptime_int, v: anytype, comptime sign: builtin.Signedness) IntRet
 
                 switch (tInt.signedness) {
                     //i(origin bits) to i(bits) - where (origin bits) > (bits)
-                    .signed => return @as(DestT, @intCast(v)),
+                    .signed => return @as(DestT, @truncate(v)),
 
                     //u(origin bits) to i(bits) - where (origin bits) > (bits)
                     .unsigned => return @as(DestT, @bitCast(@as(DestTu, @truncate(v)))),
