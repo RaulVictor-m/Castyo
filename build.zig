@@ -12,6 +12,12 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/castyo.zig"),
         .target = target,
         .optimize = optimize,
+        .strip = !(b.option(
+            bool,
+            "no-strip",
+            "stops the build striping done for compilation speed"
+            ) orelse false),
+
     });
 
     const exe = b.addExecutable(.{
@@ -34,6 +40,7 @@ pub fn build(b: *std.Build) void {
 
     const exe_unit_tests = b.addTest(.{
         .root_module = castyo_mod,
+        .use_llvm = false,
     });
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
