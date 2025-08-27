@@ -8,10 +8,10 @@ and more user friendly, which is going to help alot for prototyping.
 
 ## Situation
 
-Well the library is not ready just yet and does not support casting to floats,
-but you are already able to do any int to int or float to int
-conversion with only one single function like "U64(n)" or "I32(n)", and
-as a bonus everything that works for integers also works for Vector(x, int).
+Well the library is not ready just yet,
+but you are already able to do any numeric conversion
+with only one single function like "U64(n)/I32(n)" or "F32(n)", and
+as a bonus everything that works for integers also works for Vector(x, numeric).
 
 ## How to
 
@@ -24,13 +24,20 @@ on these example:
 
     const n1: u64 = 10;
     const n2: i128 = -20;
+
     const n3: f64 = 10.306;
     const n4: f64 = -10.306;
 
+    const n6: i8 = -1;
+    const n7: f64 = 2.5;
+    const n8: f64 = 2.5 * F64(n6);
+
     result += I64(n1) + I64(n2);
     result += I64(n3) + I64(n4);
+    result += I64(n7) + I64(n8);
 
     try std.testing.expect(result == 0);
+
 ```
 
 ## Installation
