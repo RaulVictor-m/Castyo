@@ -187,20 +187,18 @@ fn FloatReturnType(comptime srcInfo: builtin.Type, destT: type) type {
 /// it just maps either floatCast or floatFromInt, which never error
 /// but may have some loss so be mindful
 pub fn Float(destT: type, v: anytype) FloatReturnType(@typeInfo(@TypeOf(v)), destT) {
-    const underlineT = internalTypeInfo(v);
+    const underlineT = internalTypeInfo(@TypeOf(v));
     const retT = FloatReturnType(@typeInfo(@TypeOf(v)), destT);
 
     //as floating types casts never *explode* there is no need for magic
-    if (underlineT == .Float) {
+    if (underlineT == .float) {
         return @as(retT, @floatCast(v));
     }
-    if (underlineT == .Int) {
+    if (underlineT == .int) {
         return @as(retT, @floatFromInt(v));
     }
 
     @compileError("unsupported type" ++ @typeName(@TypeOf(v)) ++ "for Float conversion");
-
-    return v;
 }
 
 pub fn main() !void {}
@@ -412,6 +410,25 @@ test "U32/I32(): Vector(float) test" {
     try std.testing.expect(@reduce(.Add, nru) == 0);
 }
 
+test "F32(): int test" {
+    var nr: f32 = 1.0;
+
+    const n1: u64 = 2;
+    const n2: i64 = 2;
+    const n3: u32 = 2;
+    const n4: i32 = 2;
+    const n5: u16 = 2;
+    const n6: i16 = 2;
+
+    nr *= F32(n1);
+    nr /= F32(n2);
+    nr *= F32(n3);
+    nr /= F32(n4);
+    nr *= F32(n5);
+    nr /= F32(n6);
+
+    try std.testing.expect(nr == 1.0);
+}
 
 test "README examples" {
     var result: i64 = 10;
