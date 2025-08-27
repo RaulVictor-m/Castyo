@@ -1,43 +1,66 @@
 const std = @import("std");
 const builtin = std.builtin;
 
-fn I64(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 64, .signed) {
+pub fn I64(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 64, .signed) {
     return I(64, v);
 }
 
-fn I32(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 32, .signed) {
+pub fn I32(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 32, .signed) {
     return I(32, v);
 }
 
-fn I16(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 16, .signed) {
+pub fn I16(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 16, .signed) {
     return I(16, v);
 }
 
-fn I8(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 8, .signed) {
+pub fn I8(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 8, .signed) {
     return I(8, v);
 }
 
-fn U64(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 64, .unsigned) {
+pub fn U64(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 64, .unsigned) {
     return U(64, v);
 }
 
-fn U32(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 32, .unsigned) {
+pub fn U32(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 32, .unsigned) {
     return U(32, v);
 }
 
-fn U16(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 16, .unsigned) {
+pub fn U16(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 16, .unsigned) {
     return U(16, v);
 }
 
-fn U8(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 8, .unsigned) {
+pub fn U8(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 8, .unsigned) {
     return U(8, v);
 }
 
-fn U(bits: comptime_int, v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), bits, .unsigned) {
+//-----------------------------------------------------------
+//
+
+pub fn F128(v: anytype) FloatReturnType(@typeInfo(@TypeOf(v)), f128) {
+    return Float(f128, v);
+}
+
+pub fn F80(v: anytype) FloatReturnType(@typeInfo(@TypeOf(v)), f80) {
+    return Float(f80, v);
+}
+
+pub fn F64(v: anytype) FloatReturnType(@typeInfo(@TypeOf(v)), f64) {
+    return Float(f64, v);
+}
+
+pub fn F32(v: anytype) FloatReturnType(@typeInfo(@TypeOf(v)), f32) {
+    return Float(f32, v);
+}
+
+pub fn F16(v: anytype) FloatReturnType(@typeInfo(@TypeOf(v)), f16) {
+    return Float(f16, v);
+}
+
+pub fn U(bits: comptime_int, v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), bits, .unsigned) {
     return Int(bits, v, .unsigned);
 }
 
-fn I(bits: comptime_int, v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), bits, .signed) {
+pub fn I(bits: comptime_int, v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), bits, .signed) {
     return Int(bits, v, .signed);
 }
 
@@ -57,6 +80,8 @@ fn internalTypeInfo(T: type) builtin.Type {
 /// return type int/vector(int) from the destination int infos
 /// support only for vectors(int) and int
 fn IntReturnType(comptime srcInfo: builtin.Type, destBits: comptime_int, destSign: builtin.Signedness) type {
+    //TODO: type check to see if the conversion is actually
+    //possible instead of just assuming it always works
     const NewIntT = @Type(.{ .int = .{ .signedness = destSign, .bits = destBits } });
 
     if (srcInfo == .vector) {
@@ -68,7 +93,7 @@ fn IntReturnType(comptime srcInfo: builtin.Type, destBits: comptime_int, destSig
 //Cast any int/vector(int) to any (u/i(bits))/(vector(u/i(bits)))
 //int to uint conv sign extend when smaller and trucate when bigger
 //so if the numbers fit they are the same (bitwise): -32 == U64(-32)
-fn Int(bits: comptime_int, v: anytype, comptime sign: builtin.Signedness) IntReturnType(@typeInfo(@TypeOf(v)), bits, sign) {
+pub fn Int(bits: comptime_int, v: anytype, comptime sign: builtin.Signedness) IntReturnType(@typeInfo(@TypeOf(v)), bits, sign) {
     const DestTu = IntReturnType(@typeInfo(@TypeOf(v)), bits, .unsigned);
     const DestTi = IntReturnType(@typeInfo(@TypeOf(v)), bits, .signed);
     const DestT = if (sign == .unsigned) DestTu else DestTi;
@@ -142,6 +167,39 @@ fn Int(bits: comptime_int, v: anytype, comptime sign: builtin.Signedness) IntRet
             @compileError(errMsg);
         },
     }
+    return v;
+}
+
+/// return type float/vector(float) from the destination Type infos
+/// support only for vectors(float) and float
+fn FloatReturnType(comptime srcInfo: builtin.Type, destT: type) type {
+    //TODO: type check to see if the conversion is actually
+    //possible instead of just assuming it always works
+    const NewFloatT = destT;
+
+    if (srcInfo == .vector) {
+        return @Vector(srcInfo.vector.len, NewFloatT);
+    }
+    return NewFloatT;
+}
+
+/// Cast any numeric/vector(numeric) to any supported float type
+/// it just maps either floatCast or floatFromInt, which never error
+/// but may have some loss so be mindful
+pub fn Float(destT: type, v: anytype) FloatReturnType(@typeInfo(@TypeOf(v)), destT) {
+    const underlineT = internalTypeInfo(v);
+    const retT = FloatReturnType(@typeInfo(@TypeOf(v)), destT);
+
+    //as floating types casts never *explode* there is no need for magic
+    if (underlineT == .Float) {
+        return @as(retT, @floatCast(v));
+    }
+    if (underlineT == .Int) {
+        return @as(retT, @floatFromInt(v));
+    }
+
+    @compileError("unsupported type" ++ @typeName(@TypeOf(v)) ++ "for Float conversion");
+
     return v;
 }
 
