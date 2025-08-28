@@ -192,6 +192,8 @@ pub fn Float(destT: type, v: anytype) FloatReturnType(@typeInfo(@TypeOf(v)), des
 
     //as floating types casts never *explode* there is no need for magic
     if (underlineT == .float) {
+        // if (@TypeOf(v) == @Vector(3, f64))
+        //     @compileError("bug type = " ++ @typeName(retT) ++ "\n");
         return @as(retT, @floatCast(v));
     }
     if (underlineT == .int) {
@@ -428,6 +430,60 @@ test "F32(): int test" {
     nr /= F32(n6);
 
     try std.testing.expect(nr == 1.0);
+}
+
+test "F32(): float test" {
+    var nr: f32 = 1.0;
+
+    const n1: f16  = 2.0;
+    const n2: f64  = 2.0;
+    const n3: f80  = 2.0;
+    const n4: f128 = 2.0;
+
+    nr *= F32(n1);
+    nr /= F32(n2);
+    nr *= F32(n3);
+    nr /= F32(n4);
+
+    try std.testing.expect(nr == 1.0);
+}
+
+test "F32(): vector(int) test" {
+    var nr: @Vector(3, f32) = @splat(1.0);
+
+    const n1: @Vector(3, u64) = @splat(2);
+    const n2: @Vector(3, i64) = @splat(2);
+    const n3: @Vector(3, u32) = @splat(2);
+    const n4: @Vector(3, i32) = @splat(2);
+    const n5: @Vector(3, u16) = @splat(2);
+    const n6: @Vector(3, i16) = @splat(2);
+
+    nr *= F32(n1);
+    nr /= F32(n2);
+    nr *= F32(n3);
+    nr /= F32(n4);
+    nr *= F32(n5);
+    nr /= F32(n6);
+
+    try std.testing.expect(@reduce(.Add, nr) == 3.0);
+    try std.testing.expect(@reduce(.Mul, nr) == 1.0);
+}
+
+test "F32(): vector(float) test" {
+    var nr: @Vector(3, f32) = @splat(1.0);
+
+    const n1: @Vector(3, f16)  = @splat(2.0);
+    const n2: @Vector(3, f64)  = @splat(2.0);
+    const n3: @Vector(3, f80)  = @splat(2.0);
+    const n4: @Vector(3, f128) = @splat(2.0);
+
+    nr *= F32(n1);
+    nr /= F32(n2);
+    nr *= F32(n3);
+    nr /= F32(n4);
+
+    try std.testing.expect(@reduce(.Add, nr) == 3.0);
+    try std.testing.expect(@reduce(.Mul, nr) == 1.0);
 }
 
 test "README examples" {

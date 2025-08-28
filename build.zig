@@ -40,7 +40,7 @@ pub fn build(b: *std.Build) void {
 
     const exe_unit_tests = b.addTest(.{
         .root_module = castyo_mod,
-        .use_llvm = false,
+        .use_llvm = true,
     });
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
