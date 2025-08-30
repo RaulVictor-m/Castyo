@@ -195,10 +195,19 @@ fn FloatReturnType(comptime srcInfo: builtin.Type, destT: type) type {
 /// it just maps either floatCast or floatFromInt, which never error
 /// but may have some loss so be mindful
 pub fn Float(destT: type, v: anytype) FloatReturnType(@typeInfo(@TypeOf(v)), destT) {
-    const underlineT = internalTypeInfo(@TypeOf(v));
-    const retT = FloatReturnType(@typeInfo(@TypeOf(v)), destT);
-
     //as floating types casts never *explode* there is no need for magic
+    const tInfo = @typeInfo(@TypeOf(v));
+
+    const underlineT = internalTypeInfo(@TypeOf(v));
+    const retT = FloatReturnType(tInfo, destT);
+
+
+    if(tInfo == .@"enum") {
+        const TmpT = tInfo.@"enum".tag_type;
+        const tmpVal: TmpT = @intFromEnum(v);
+        return Float(destT, tmpVal);
+    }
+
     if (underlineT == .float) {
         // if (@TypeOf(v) == @Vector(3, f64))
         //     @compileError("bug type = " ++ @typeName(retT) ++ "\n");
@@ -509,6 +518,23 @@ test "F32(): vector(float) test" {
 
     try std.testing.expect(@reduce(.Add, nr) == 3.0);
     try std.testing.expect(@reduce(.Mul, nr) == 1.0);
+}
+
+test "F32: enum test" {
+    const TestEnum = enum(i8) {
+        test0 = -1,
+        test1 = 10,
+        test2 = 5,
+        test3,
+        test4,
+    };
+
+    var nr: f32 = 1;
+
+    nr += F32(TestEnum.test0);
+
+    try std.testing.expect(nr == 0);
+    try std.testing.expect(F32(TestEnum.test1) / F32(TestEnum.test2) == 2);
 }
 
 test "README examples" {
