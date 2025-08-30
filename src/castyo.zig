@@ -537,6 +537,11 @@ test "F32: enum test" {
 test "README examples" {
     var result: i64 = 10;
 
+    const TestEnum = enum(i8) {
+        test1 = 10,
+        test2 = -10,
+    };
+
     const n1: u64 = 10;
     const n2: i128 = -20;
 
@@ -552,4 +557,5 @@ test "README examples" {
     result += I64(n7) + I64(n8);
 
     try std.testing.expect(result == 0);
+    try std.testing.expect(U32(TestEnum.test1) +% U32(TestEnum.test2) == 0);
 }
