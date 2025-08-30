@@ -69,8 +69,9 @@ pub fn I(bits: comptime_int, v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), bi
 fn internalTypeInfo(T: type) builtin.Type {
     const tInfo = @typeInfo(T);
     switch (tInfo) {
-        .vector => return @typeInfo(tInfo.vector.child),
-        .int, .float, .bool => return tInfo,
+        .vector  => return @typeInfo(tInfo.vector.child),
+        .@"enum" => return @typeInfo(tInfo.@"enum".tag_type),
+        .int, .float => return tInfo,
 
         else => @compileError("Unsuported Type " ++ @typeName(T)),
     }
@@ -100,10 +101,17 @@ pub fn Int(bits: comptime_int, v: anytype, comptime sign: builtin.Signedness) In
 
     const T = @TypeOf(v);
     const tName = @typeName(T);
+    const tInfo = @typeInfo(T);
 
     if (T == DestT or T == comptime_int) return @as(DestT, v);
 
     const internalT = internalTypeInfo(T);
+
+    if(tInfo == .@"enum") {
+        const TmpT = @typeInfo(T).@"enum".tag_type;
+        const tmpVal: TmpT = @intFromEnum(v);
+        return Int(bits, tmpVal, sign);
+    }
 
     switch (internalT) {
         .int => |tInt| {
@@ -410,6 +418,23 @@ test "U32/I32(): Vector(float) test" {
 
     try std.testing.expect(@reduce(.Add, nri) == 0);
     try std.testing.expect(@reduce(.Add, nru) == 0);
+}
+
+test "U32: enum test" {
+    const TestEnum = enum(i8) {
+        test0 = -1,
+        test1 = 10,
+        test2 = -10,
+        test3,
+        test4,
+    };
+
+    var nr: u32 = 1;
+
+    nr +%= U32(TestEnum.test0);
+
+    try std.testing.expect(nr == 0);
+    try std.testing.expect(U32(TestEnum.test1) +% U32(TestEnum.test2) == 0);
 }
 
 test "F32(): int test" {
