@@ -67,26 +67,26 @@ pub fn I(bits: comptime_int, v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), bi
 /// return type info or child_type info in case of vector
 /// support only for vectors and numeric types
 fn internalTypeInfo(T: type) builtin.Type {
-    const tInfo = @typeInfo(T);
-    switch (tInfo) {
-        .vector  => return @typeInfo(tInfo.vector.child),
-        .@"enum" => return @typeInfo(tInfo.@"enum".tag_type),
-        .int, .float => return tInfo,
+    const t_info = @typeInfo(T);
+    switch (t_info) {
+        .vector  => return @typeInfo(t_info.vector.child),
+        .@"enum" => return @typeInfo(t_info.@"enum".tag_type),
+        .int, .float => return t_info,
 
         else => @compileError("Unsuported Type " ++ @typeName(T)),
     }
-    return tInfo;
+    return t_info;
 }
 
 /// return type int/vector(int) from the destination int infos
 /// support only for vectors(int) and int
-fn IntReturnType(comptime srcInfo: builtin.Type, destBits: comptime_int, destSign: builtin.Signedness) type {
+fn IntReturnType(comptime src_info: builtin.Type, dest_bits: comptime_int, dest_sign: builtin.Signedness) type {
     //TODO: type check to see if the conversion is actually
     //possible instead of just assuming it always works
-    const NewIntT = @Type(.{ .int = .{ .signedness = destSign, .bits = destBits } });
+    const NewIntT = @Type(.{ .int = .{ .signedness = dest_sign, .bits = dest_bits } });
 
-    if (srcInfo == .vector) {
-        return @Vector(srcInfo.vector.len, NewIntT);
+    if (src_info == .vector) {
+        return @Vector(src_info.vector.len, NewIntT);
     }
     return NewIntT;
 }
@@ -100,43 +100,42 @@ pub fn Int(bits: comptime_int, v: anytype, comptime sign: builtin.Signedness) In
     const DestT = if (sign == .unsigned) DestTu else DestTi;
 
     const T = @TypeOf(v);
-    const tName = @typeName(T);
-    const tInfo = @typeInfo(T);
+    const t_name = @typeName(T);
+    const t_info = @typeInfo(T);
 
     if (T == DestT or T == comptime_int) return @as(DestT, v);
 
-    const internalT = internalTypeInfo(T);
+    const internal_t_info = internalTypeInfo(T);
 
-    if(tInfo == .@"enum") {
+    if(t_info == .@"enum") {
         const TmpT = @typeInfo(T).@"enum".tag_type;
-        const tmpVal: TmpT = @intFromEnum(v);
-        return Int(bits, tmpVal, sign);
+        const tmp_val: TmpT = @intFromEnum(v);
+        return Int(bits, tmp_val, sign);
     }
 
-    switch (internalT) {
-        .int => |tInt| {
+    switch (internal_t_info) {
+        .int => |int_info| {
             if (sign == .unsigned) {
                 //i/u(origin bits) to u(bits) - where (origin bits) < (bits)
-                if (tInt.bits < bits) return @as(DestT, @bitCast(@as(DestTi, @intCast(v))));
+                if (int_info.bits < bits) return @as(DestT, @bitCast(@as(DestTi, @intCast(v))));
 
                 //i(origin bits) to u(bits) - where (origin bits) == (bits)
-                if (tInt.bits == bits) return @as(DestT, @bitCast(v));
+                if (int_info.bits == bits) return @as(DestT, @bitCast(v));
 
-                switch (tInt.signedness) {
+                switch (int_info.signedness) {
                     //i(origin bits) to u(bits) - where (origin bits) > (bits)
                     .signed => return @as(DestT, @bitCast(@as(DestTi, @truncate(v)))),
-
                     //u(origin bits) to u(bits) - where (origin bits) > (bits)
                     .unsigned => return @as(DestT, @truncate(v)),
                 }
             } else {
                 //i/u(origin bits) to i(bits) - where (origin bits) < (bits)
-                if (tInt.bits < bits) return @as(DestT, v);
+                if (int_info.bits < bits) return @as(DestT, v);
 
                 //u(origin bits) to i(bits) - where (origin bits) == (bits)
-                if (tInt.bits == bits) return @as(DestT, @bitCast(v));
+                if (int_info.bits == bits) return @as(DestT, @bitCast(v));
 
-                switch (tInt.signedness) {
+                switch (int_info.signedness) {
                     //i(origin bits) to i(bits) - where (origin bits) > (bits)
                     .signed => return @as(DestT, @truncate(v)),
 
@@ -145,34 +144,34 @@ pub fn Int(bits: comptime_int, v: anytype, comptime sign: builtin.Signedness) In
                 }
             }
         },
-        .float => |tFloat|{
+        .float => |float_info|{
             //this is an int with the same amount of bits as the float which is mostly std ints
-            const TIntTmp = IntReturnType(@typeInfo(@TypeOf(v)), tFloat.bits, .signed);
+            const TIntTmp = IntReturnType(@typeInfo(@TypeOf(v)), float_info.bits, .signed);
 
             if (sign == .unsigned) {
                 //OBS: 5 is the min number of bits in a float exponent
 
                 //f(origins bits) to u(bits) - where (origin bits-5) <= (bits)
-                if (tFloat.bits-5 <= bits) return @as(DestT, @bitCast(@as(DestTi, @intFromFloat(v))));
+                if (float_info.bits-5 <= bits) return @as(DestT, @bitCast(@as(DestTi, @intFromFloat(v))));
 
                 //f(origins bits) to u(bits) - where (origin bits-5) > (bits)
                 return @as(DestT, @bitCast(@as(DestTi, @truncate(@as(TIntTmp, @intFromFloat(v))))));
             }
             else {
                 //f(origins bits) to i(bits) - where (origin bits-5) <= (bits)
-                if (tFloat.bits-5 <= bits) return @bitCast(@as(DestTi, @intFromFloat(v)));
+                if (float_info.bits-5 <= bits) return @bitCast(@as(DestTi, @intFromFloat(v)));
 
                 //f(origins bits) to i(bits) - where (origin bits-5) > (bits)
                 return @as(DestTi, @truncate(@as(TIntTmp, @intFromFloat(v))));
             }
         },
         else => {
-            const errMsg = if (sign == .unsigned)
-                std.fmt.comptimePrint("U{d}(): Cannot cast from {s} to u{d}\n", .{ bits, tName, bits })
+            const err_msg = if (sign == .unsigned)
+                std.fmt.comptimePrint("U{d}(): Cannot cast from {s} to u{d}\n", .{ bits, t_name, bits })
             else
-                std.fmt.comptimePrint("I{d}(): Cannot cast from {s} to i{d}\n", .{ bits, tName, bits });
+                std.fmt.comptimePrint("I{d}(): Cannot cast from {s} to i{d}\n", .{ bits, t_name, bits });
 
-            @compileError(errMsg);
+            @compileError(err_msg);
         },
     }
     return v;
@@ -180,13 +179,13 @@ pub fn Int(bits: comptime_int, v: anytype, comptime sign: builtin.Signedness) In
 
 /// return type float/vector(float) from the destination Type infos
 /// support only for vectors(float) and float
-fn FloatReturnType(comptime srcInfo: builtin.Type, destT: type) type {
+fn FloatReturnType(comptime src_info: builtin.Type, DestT: type) type {
     //TODO: type check to see if the conversion is actually
     //possible instead of just assuming it always works
-    const NewFloatT = destT;
+    const NewFloatT = DestT;
 
-    if (srcInfo == .vector) {
-        return @Vector(srcInfo.vector.len, NewFloatT);
+    if (src_info == .vector) {
+        return @Vector(src_info.vector.len, NewFloatT);
     }
     return NewFloatT;
 }
@@ -194,27 +193,25 @@ fn FloatReturnType(comptime srcInfo: builtin.Type, destT: type) type {
 /// Cast any numeric/vector(numeric) to any supported float type
 /// it just maps either floatCast or floatFromInt, which never error
 /// but may have some loss so be mindful
-pub fn Float(destT: type, v: anytype) FloatReturnType(@typeInfo(@TypeOf(v)), destT) {
+pub fn Float(DestT: type, v: anytype) FloatReturnType(@typeInfo(@TypeOf(v)), DestT) {
     //as floating types casts never *explode* there is no need for magic
-    const tInfo = @typeInfo(@TypeOf(v));
+    const t_info = @typeInfo(@TypeOf(v));
 
-    const underlineT = internalTypeInfo(@TypeOf(v));
-    const retT = FloatReturnType(tInfo, destT);
+    const internal_t_info = internalTypeInfo(@TypeOf(v));
+    const RetT = FloatReturnType(t_info, DestT);
 
 
-    if(tInfo == .@"enum") {
-        const TmpT = tInfo.@"enum".tag_type;
-        const tmpVal: TmpT = @intFromEnum(v);
-        return Float(destT, tmpVal);
+    if(t_info == .@"enum") {
+        const TmpT = t_info.@"enum".tag_type;
+        const tmp_val: TmpT = @intFromEnum(v);
+        return Float(DestT, tmp_val);
     }
 
-    if (underlineT == .float) {
-        // if (@TypeOf(v) == @Vector(3, f64))
-        //     @compileError("bug type = " ++ @typeName(retT) ++ "\n");
-        return @as(retT, @floatCast(v));
+    if (internal_t_info == .float) {
+        return @as(RetT, @floatCast(v));
     }
-    if (underlineT == .int) {
-        return @as(retT, @floatFromInt(v));
+    if (internal_t_info == .int) {
+        return @as(RetT, @floatFromInt(v));
     }
 
     @compileError("unsupported type" ++ @typeName(@TypeOf(v)) ++ "for Float conversion");
