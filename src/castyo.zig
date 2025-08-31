@@ -1,4 +1,7 @@
 // -----------------------------------------------------------------------------
+// castyo.zig
+// A simple zig cast library
+
 // MIT License
 
 // Copyright (c) 2024 Raul Victor
@@ -58,7 +61,6 @@ pub fn U8(v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), 8, .unsigned) {
 }
 
 //-----------------------------------------------------------
-//
 
 pub fn F128(v: anytype) FloatReturnType(@typeInfo(@TypeOf(v)), f128) {
     return Float(f128, v);
@@ -79,6 +81,8 @@ pub fn F32(v: anytype) FloatReturnType(@typeInfo(@TypeOf(v)), f32) {
 pub fn F16(v: anytype) FloatReturnType(@typeInfo(@TypeOf(v)), f16) {
     return Float(f16, v);
 }
+
+//-----------------------------------------------------------
 
 pub fn U(bits: comptime_int, v: anytype) IntReturnType(@typeInfo(@TypeOf(v)), bits, .unsigned) {
     return Int(bits, v, .unsigned);
